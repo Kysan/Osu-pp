@@ -1,12 +1,15 @@
-#include <SFML/Graphics.hpp>
 #include <SFML/System.hpp>
+#include <SFML/Graphics.hpp>
+#include <SFML/Audio.hpp>
 #include <stdio.h>
+#include <iostream>
 #include <string>
 #include <vector>
 #include "Skin.hpp"
 #include "Utils.hpp"
 #include "Note.hpp"
-#include "MapParser.hpp"
+#include "Map.hpp"
+#include "Keyboard.hpp"
 
 
 
@@ -16,14 +19,16 @@ int main(int argc, char const *argv[])
     std::srand(std::time(nullptr));
 
     std::string cwd = currentWorkingDirectory(argv[0]);
-    printf("%s", argv[0]);
-    sf::RenderWindow window(sf::VideoMode(1024, 768), "Osu!++");
+    printf("Game running in %s\n", argv[0]);
+    sf::RenderWindow window(sf::VideoMode(1024, 768), "Osu!++", sf::Style::Titlebar);
     window.setMouseCursorVisible(false);
     // * chargement du skin
     Skin::loadSkin(cwd + "/skins/Cinia Cursor Green");
     
-
-
+    // sf::SoundBuffer sb;
+    // sb.loadFromFile(std::string("bin/skins/Cinia Cursor Green")+"/normal-hitnormal.ogg");
+    sf::Sound s(Skin::getHitsoundBuffer());
+    s.play();
     // * création du curseur
     sf::Sprite cursor(Skin::cursor);
     sf::Vector2i mousePos(0, 0);
@@ -33,11 +38,16 @@ int main(int argc, char const *argv[])
     // * pour afficher le framerate en bas à droite
     sf::Font font;
     font.loadFromFile(cwd + "/consolas.ttf");
-    sf::Text framerate("0", font);
     sf::Clock delta;
+    sf::Text framerate("0", font);
     framerate.setCharacterSize(24);
     framerate.setFillColor(sf::Color(255, 0, 0));
-    framerate.setPosition(window.getSize().x, window.getSize().y);
+    framerate.setPosition(window.getSize().x-60, window.getSize().y-30);
+
+    sf::Text timerText("0", font);
+    timerText.setCharacterSize(24);
+    timerText.setFillColor(sf::Color(255, 0, 0));
+    timerText.setPosition(0, window.getSize().y-30);
     
     
     // * barre de progression de la map
@@ -47,9 +57,12 @@ int main(int argc, char const *argv[])
     sf::Time mapLength(sf::seconds(3));
     
 
-    MapParser parser(cwd+"/maps/1337");
     
-    std::vector<Note> notes = parser.generateNotes();
+    
+    // * pour charger uen map
+    Map::Load(cwd+"/map/1337");
+    
+    
     
     
     while (window.isOpen())
@@ -65,6 +78,30 @@ int main(int argc, char const *argv[])
                 mousePos.y = event.mouseMove.y;
                 cursor.setPosition((sf::Vector2f) mousePos);
             }
+
+            if(event.type == sf::Event::KeyPressed) {
+                // * pour éviter que la même touche soit trigger plusieurs fois
+                if(Keyboard::isKeyAlreadyPressed(event.key.code)) {
+                    continue;
+                }
+                Keyboard::pressKey(event.key.code);
+            
+                // std::cout << "<"<<event.key.code << ">" << std::endl;
+                if(event.key.code == sf::Keyboard::Key::E || event.key.code == sf::Keyboard::Key::R) {
+                    sf::Vector2f cursorPos = cursor.getPosition();
+                    bool circleTouched;
+                    for(int i = 0; i < Map::Notes.size(); ++i) {
+                        circleTouched = Map::Notes[i].tryHit(timer.getElapsedTime(), cursorPos.x, cursorPos.y);
+                        if(circleTouched) {
+                            break;
+                        }
+                    }
+                    std::string message = circleTouched ? "hit!" : "miss!" ;
+                }
+
+            } else if(event.type == sf::Event::KeyReleased) {
+                Keyboard::releaseKey(event.key.code);
+            }
         }
         // #######################################################################
         // * update
@@ -74,22 +111,21 @@ int main(int argc, char const *argv[])
         // * pour reset la barre de progression toutes les 5 secondes
         if(timer.getElapsedTime() >= mapLength) {
             timer.restart();
+            Map::generateRandomMap(sf::seconds(300), 200, 3, 8, 8);
+            mapLength = sf::seconds(300);
         }
         float x = (timer.getElapsedTime() / mapLength) * window.getSize().x;
         progressBar.setPosition(x, 0);
 
         // * pour avoir l'input lag en bas
-        std::string info = std::to_string(delta.getElapsedTime().asSeconds()*1000.0);
-        info.substr(0, 3);
+        std::string info = std::to_string(delta.getElapsedTime().asMicroseconds()/1000.0);
+        info = info.substr(0, 4);
         
         framerate.setString(info + " ms");
-        framerate
-            .setOrigin(
-                    framerate.getLocalBounds().width+10,
-                    framerate.getLocalBounds().height+20
-            );
+
         delta.restart();
 
+        timerText.setString(std::to_string(timer.getElapsedTime().asSeconds()));
         
         
 
@@ -101,10 +137,11 @@ int main(int argc, char const *argv[])
         
         
 
-        for(int i = 0; i < notes.size(); ++ i) {
-            notes[i].draw(&window, timer);
+        for(int i = 0; i < Map::Notes.size(); ++ i) {
+            Map::Notes[i].draw(&window, timer.getElapsedTime());
         }
 
+        window.draw(timerText);
         window.draw(framerate);
         window.draw(progressBar);    
         window.draw(cursor);

@@ -6,7 +6,7 @@ includeFlags = -Iinclude -DSFML_STATIC
 # dossier ou trouver le lib à link
 getLibDir = -Llib
 # libs à link 
-linkLibs = -lsfml-graphics-s -lsfml-window-s -lsfml-system-s -lopengl32 -lwinmm -lgdi32 -lfreetype
+linkLibs = -lsfml-audio-s -lopenal32 -lflac -lvorbisenc -lvorbisfile -lvorbis -logg -lsfml-graphics-s -lsfml-window-s -lsfml-system-s -lopengl32 -lwinmm -lgdi32 -lfreetype
 # on colle tout ça
 linkerFlags = $(getLibDir) $(linkLibs)
 
