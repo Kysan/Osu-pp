@@ -3,7 +3,7 @@
 
 [![Preview](https://img.youtube.com/vi/mqm8GpgQXaM/0.jpg)](http://www.youtube.com/watch?v=mqm8GpgQXaM)
 
-## how to build and run 
+## how to build
 ### 1) Install make command
 
 install choco ->[there](https://chocolatey.org/install)<-
